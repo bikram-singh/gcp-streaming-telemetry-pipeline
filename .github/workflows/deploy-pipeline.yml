@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - Telemetry Streaming Pipeline
+name: Telemetry Streaming Pipeline
 
 on:
   push:
