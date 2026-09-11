@@ -26,6 +26,62 @@ flowchart LR
     D --> K[Cloud Monitoring: DLQ volume alert]
 ```
 
+## 2a. Architecture Diagram (presentation / Medium format)
+
+The Mermaid diagram above is the git-native source of truth (renders inline
+on GitHub, easy to keep in sync with changes). The ASCII version below is
+for contexts that don't render Mermaid — Medium articles, README hero
+images, slide decks — kept as a code block so monospace alignment holds.
+
+```
+                              [ SIMULATED FACTORY TELEMETRY ]
+                                          │
+                         (JSON: machine_id, temperature, vibration, timestamp)
+                                          │
+                                          ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│  INGESTION LAYER            (VPC: telemetry-vpc  /  Subnet: telemetry-subnet)              │
+│                                   ┌──────────────────────────┐                             │
+│                                   │        Pub/Sub           │                             │
+│                                   │   telemetry-input-topic  │                             │
+│                                   └────────────┬─────────────┘                             │
+└────────────────────────────────────────────────┼───────────────────────────────────────────┘
+                                                  │
+                                                  ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│  STREAM PROCESSING LAYER      (Private workers, no public IP  /  Cloud NAT egress)         │
+│                          ┌────────────────────────────────────┐                            │
+│                          │      Dataflow Flex Template         │                            │
+│                          │   (Apache Beam, sa-dataflow-worker) │                            │
+│                          │  1-min tumbling window · avg_temp,  │                            │
+│                          │  avg_vibration per machine_id       │                            │
+│                          └──────────┬──────────────────┬───────┘                            │
+└─────────────────────────────────────┼──────────────────┼─────────────────────────────────────┘
+                    (Windowed Averages)│                  │ (Malformed Payload)
+                                       ▼                  ▼
+┌────────────────────────────────────────┐   ┌───────────────────────────────────────────┐
+│  ANALYTICS & STORAGE LAYER              │   │  DEAD-LETTER QUEUE                        │
+│  BigQuery: telemetry_analytics          │   │  Pub/Sub: telemetry-dlq-topic              │
+│   └─ telemetry_aggregates               │   │  (Cloud Monitoring alert on backlog)       │
+│      (clustered on machine_id)          │   └───────────────────────────────────────────┘
+└────────────────────┬─────────────────────┘
+                      │
+        (avg_temperature > 80.0°C  OR  avg_vibration > 5.0 mm/s)
+                      ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│  AI & INCIDENT RESPONSE LAYER                                                              │
+│  ┌────────────────────┐   ┌───────────────────────┐   ┌──────────────────────────────┐    │
+│  │     Pub/Sub         │──►│   Cloud Function       │──►│      Gemini 2.5 Flash        │    │
+│  │ telemetry-alerts-   │   │  gemini-diagnostics     │   │   (google-genai SDK,          │    │
+│  │      topic          │   │  (gen2, Eventarc,       │   │    Vertex AI backend)         │    │
+│  │                      │   │   sa-gemini-function)   │   │  Root-cause diagnostic brief  │    │
+│  └────────────────────┘   └───────────────────────┘   └──────────────┬───────────────┘    │
+│                                                                        │                     │
+│                                                                        ▼                     │
+│                                              BigQuery: telemetry_analytics.incident_log      │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
 ## 3. GCP Services Used
 
 | Layer | Service | Purpose |
