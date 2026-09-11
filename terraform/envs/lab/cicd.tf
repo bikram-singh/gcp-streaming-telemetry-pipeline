@@ -25,6 +25,21 @@ resource "google_project_service" "required_apis" {
   disable_on_destroy = false
 }
 
+# --- Cloud Build default service account permissions ---
+# Newer GCP projects no longer auto-grant Editor to the default Cloud Build
+# SA (PROJECT_NUMBER@cloudbuild.gserviceaccount.com). Cloud Functions gen2
+# deploys go through Cloud Build under the hood, so without this the build
+# step fails with "missing permission on the build service account."
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
+resource "google_project_iam_member" "cloudbuild_default_sa_builder" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
+  member  = "serviceAccount:${data.google_project.current.number}@cloudbuild.gserviceaccount.com"
+}
+
 # --- Artifact Registry: Docker images for the Dataflow Flex Template launcher ---
 resource "google_artifact_registry_repository" "telemetry_images" {
   location      = var.region
