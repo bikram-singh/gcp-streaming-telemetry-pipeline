@@ -144,6 +144,20 @@ jobs:
             --service-account=sa-gemini-function@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
             --set-env-vars=GCP_PROJECT=${{ vars.GCP_PROJECT_ID }},GCP_LOCATION=${{ vars.GCP_REGION }}
 
+      # Gen2 Cloud Functions run as Cloud Run under the hood — Eventarc
+      # invokes the underlying Run service using the function's runtime SA,
+      # which needs explicit run.invoker on that service (not granted
+      # automatically). Without this, every trigger is silently rejected
+      # with "IAM principal lacks {run.routes.invoke} permission" and the
+      # function body never executes.
+      - name: Grant Eventarc trigger SA run.invoker on the Cloud Run service
+        run: |
+          gcloud run services add-iam-policy-binding gemini-diagnostics \
+            --region=${{ vars.GCP_REGION }} \
+            --member="serviceAccount:sa-gemini-function@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
+            --role="roles/run.invoker" \
+            --project=${{ vars.GCP_PROJECT_ID }}
+
       # Fixed job name + in-place --update on redeploy, instead of a
       # timestamped name every run: a timestamped name launches a *second*
       # concurrent streaming job on every push, which splits Pub/Sub
