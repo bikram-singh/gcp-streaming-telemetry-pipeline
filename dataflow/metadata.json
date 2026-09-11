@@ -1,0 +1,30 @@
+{
+  "name": "Streaming Machine Telemetry Pipeline",
+  "description": "Ingests machine telemetry from Pub/Sub, computes 1-minute tumbling-window averages for temperature and vibration per machine, writes results to BigQuery, routes malformed payloads to a DLQ topic, and publishes threshold-breach alerts.",
+  "parameters": [
+    {
+      "name": "input_subscription",
+      "label": "Pub/Sub Input Subscription",
+      "helpText": "Full subscription path to consume raw telemetry events from, e.g. projects/PROJECT/subscriptions/telemetry-input-sub",
+      "isOptional": false
+    },
+    {
+      "name": "dlq_topic",
+      "label": "Dead-Letter Pub/Sub Topic",
+      "helpText": "Full topic path malformed payloads are routed to, e.g. projects/PROJECT/topics/telemetry-dlq-topic",
+      "isOptional": false
+    },
+    {
+      "name": "alerts_topic",
+      "label": "Anomaly Alert Pub/Sub Topic",
+      "helpText": "Full topic path threshold-breach alerts are published to, e.g. projects/PROJECT/topics/telemetry-alerts-topic",
+      "isOptional": false
+    },
+    {
+      "name": "bq_table",
+      "label": "BigQuery Target Table",
+      "helpText": "BigQuery table spec formatted as project:dataset.table, e.g. project-streaming-telemetry:telemetry_analytics.telemetry_aggregates",
+      "isOptional": false
+    }
+  ]
+}

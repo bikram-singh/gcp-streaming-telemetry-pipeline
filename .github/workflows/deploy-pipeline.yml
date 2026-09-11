@@ -1,0 +1,175 @@
+name: CI/CD Pipeline - Telemetry Streaming Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-terraform:
+    name: Terraform Lint & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive terraform/
+
+      - name: Terraform Init
+        run: terraform -chdir=terraform/envs/lab init -backend=false
+
+      - name: Terraform Validate
+        run: terraform -chdir=terraform/envs/lab validate
+
+  deploy-infrastructure:
+    name: Terraform Apply
+    needs: validate-terraform
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      staging_bucket: ${{ steps.tf-outputs.outputs.staging_bucket }}
+      artifact_repo: ${{ steps.tf-outputs.outputs.artifact_repo }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform Init
+        run: terraform -chdir=terraform/envs/lab init
+
+      - name: Terraform Apply
+        run: terraform -chdir=terraform/envs/lab apply -auto-approve
+
+      # Read staging bucket / artifact repo straight from Terraform outputs
+      # (cicd.tf) rather than duplicating the names as separate GitHub vars.
+      - name: Export Terraform outputs
+        id: tf-outputs
+        run: |
+          echo "staging_bucket=$(terraform -chdir=terraform/envs/lab output -raw dataflow_staging_bucket)" >> "$GITHUB_OUTPUT"
+          echo "artifact_repo=$(terraform -chdir=terraform/envs/lab output -raw artifact_registry_repo)" >> "$GITHUB_OUTPUT"
+
+  build-dataflow-template:
+    name: Build & Push Flex Template
+    needs: deploy-infrastructure
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      STAGING_BUCKET: ${{ needs.deploy-infrastructure.outputs.staging_bucket }}
+      IMAGE: ${{ needs.deploy-infrastructure.outputs.artifact_repo }}/telemetry-pipeline:${{ github.sha }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build launcher image
+        working-directory: dataflow
+        run: docker build -t "${{ env.IMAGE }}" .
+
+      - name: Push launcher image
+        run: docker push "${{ env.IMAGE }}"
+
+      - name: Build Flex Template spec
+        run: |
+          gcloud dataflow flex-template build "gs://${{ env.STAGING_BUCKET }}/templates/telemetry_pipeline.json" \
+            --image "${{ env.IMAGE }}" \
+            --sdk-language "PYTHON" \
+            --metadata-file "dataflow/metadata.json"
+
+  deploy-application:
+    name: Deploy Dataflow & Cloud Function
+    needs: [deploy-infrastructure, build-dataflow-template]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      STAGING_BUCKET: ${{ needs.deploy-infrastructure.outputs.staging_bucket }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy Gemini Cloud Function
+        run: |
+          gcloud functions deploy gemini-diagnostics \
+            --gen2 \
+            --runtime=python312 \
+            --region=${{ vars.GCP_REGION }} \
+            --source=./cloud-function/gemini-diagnostics \
+            --entry-point=analyze_telemetry_alert \
+            --trigger-topic=telemetry-alerts-topic \
+            --service-account=sa-gemini-function@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-env-vars=GCP_PROJECT=${{ vars.GCP_PROJECT_ID }},GCP_LOCATION=${{ vars.GCP_REGION }}
+
+      # Fixed job name + in-place --update on redeploy, instead of a
+      # timestamped name every run: a timestamped name launches a *second*
+      # concurrent streaming job on every push, which splits Pub/Sub
+      # consumption across both jobs (silently undercounted windowed
+      # averages) and doubles your Dataflow spend. Same job name lets
+      # Dataflow do a graceful in-place pipeline update instead.
+      - name: Launch or update Dataflow job
+        run: |
+          JOB_NAME="telemetry-pipeline-lab"
+          UPDATE_FLAG=""
+          if gcloud dataflow jobs list \
+              --region="${{ vars.GCP_REGION }}" \
+              --status=active \
+              --format="value(name)" | grep -qx "$JOB_NAME"; then
+            echo "Existing active job found — updating in place."
+            UPDATE_FLAG="--update"
+          else
+            echo "No active job found — launching fresh."
+          fi
+
+          gcloud dataflow flex-template run "$JOB_NAME" $UPDATE_FLAG \
+            --template-file-gcs-location="gs://${{ env.STAGING_BUCKET }}/templates/telemetry_pipeline.json" \
+            --region=${{ vars.GCP_REGION }} \
+            --subnetwork="https://www.googleapis.com/compute/v1/projects/${{ vars.GCP_PROJECT_ID }}/regions/${{ vars.GCP_REGION }}/subnetworks/telemetry-subnet" \
+            --service-account-email="sa-dataflow-worker@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
+            --parameters input_subscription="projects/${{ vars.GCP_PROJECT_ID }}/subscriptions/telemetry-input-sub" \
+            --parameters dlq_topic="projects/${{ vars.GCP_PROJECT_ID }}/topics/telemetry-dlq-topic" \
+            --parameters alerts_topic="projects/${{ vars.GCP_PROJECT_ID }}/topics/telemetry-alerts-topic" \
+            --parameters bq_table="${{ vars.GCP_PROJECT_ID }}:telemetry_analytics.telemetry_aggregates"
