@@ -40,6 +40,31 @@ resource "google_project_iam_member" "cloudbuild_default_sa_builder" {
   member  = "serviceAccount:${data.google_project.current.number}@cloudbuild.gserviceaccount.com"
 }
 
+# --- Compute Engine default service account permissions ---
+# Since mid-2024, Cloud Functions gen2 / Cloud Build v2 builds run as the
+# Compute Engine default SA (PROJECT_NUMBER-compute@developer.gserviceaccount.com)
+# rather than the legacy Cloud Build SA above, on projects created after that
+# change. Granting the legacy SA the builder role (above) didn't resolve the
+# build failure, confirming this project is on the newer path — so this SA
+# needs the same permissions.
+resource "google_project_iam_member" "compute_default_sa_builder" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
+  member  = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_default_sa_artifactregistry" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_default_sa_logging" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
+}
+
 # --- Artifact Registry: Docker images for the Dataflow Flex Template launcher ---
 resource "google_artifact_registry_repository" "telemetry_images" {
   location      = var.region
