@@ -26,7 +26,7 @@ resource "google_iam_workload_identity_pool" "github_pool" {
 }
 
 resource "google_iam_workload_identity_pool_provider" "github_provider" {
-  workload_identity_pool_id         = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
+  workload_identity_pool_id          = google_iam_workload_identity_pool.github_pool.workload_identity_pool_id
   workload_identity_pool_provider_id = "github-provider"
   display_name                       = "GitHub OIDC provider"
 
@@ -52,8 +52,8 @@ resource "google_service_account" "github_actions_sa" {
 
 resource "google_service_account_iam_member" "wif_binding" {
   service_account_id = google_service_account.github_actions_sa.name
-  role                = "roles/iam.workloadIdentityUser"
-  member              = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/bikram-singh/gcp-streaming-telemetry-pipeline"
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/bikram-singh/gcp-streaming-telemetry-pipeline"
 }
 
 # --- Permissions the CI/CD SA needs ---
