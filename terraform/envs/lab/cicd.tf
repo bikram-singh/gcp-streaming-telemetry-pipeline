@@ -76,6 +76,15 @@ resource "google_project_iam_member" "df_artifact_registry_reader" {
   member  = "serviceAccount:${google_service_account.dataflow_worker_sa.email}"
 }
 
+# Pub/Sub subscription config inspection (ack deadline etc.) — separate from
+# pubsub.subscriber, which only allows pulling/acking messages, not reading
+# subscription metadata. Dataflow checks this at startup as a sanity check.
+resource "google_project_iam_member" "df_pubsub_viewer" {
+  project = var.project_id
+  role    = "roles/pubsub.viewer"
+  member  = "serviceAccount:${google_service_account.dataflow_worker_sa.email}"
+}
+
 # --- Artifact Registry: Docker images for the Dataflow Flex Template launcher ---
 resource "google_artifact_registry_repository" "telemetry_images" {
   location      = var.region
