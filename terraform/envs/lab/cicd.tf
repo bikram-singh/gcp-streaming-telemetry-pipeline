@@ -151,6 +151,7 @@ resource "google_project_iam_member" "cicd_roles" {
     "roles/artifactregistry.writer",
     "roles/dataflow.developer",
     "roles/cloudfunctions.developer",
+    "roles/run.admin",
     "roles/iam.workloadIdentityPoolAdmin",
   ])
   project = var.project_id
