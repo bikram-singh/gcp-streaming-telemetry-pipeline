@@ -4,6 +4,27 @@
 # Without this, .github/workflows/* have no way to authenticate to GCP and the
 # Dataflow Flex Template build has nowhere to push the image or template spec.
 
+# --- Required APIs, declared here so a missing one never surfaces as a
+#     surprise mid-deploy again (eventarc was the one that bit us) ---
+resource "google_project_service" "required_apis" {
+  for_each = toset([
+    "compute.googleapis.com",
+    "dataflow.googleapis.com",
+    "pubsub.googleapis.com",
+    "bigquery.googleapis.com",
+    "aiplatform.googleapis.com",
+    "cloudfunctions.googleapis.com",
+    "run.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "eventarc.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "iamcredentials.googleapis.com",
+    "sts.googleapis.com",
+  ])
+  service            = each.key
+  disable_on_destroy = false
+}
+
 # --- Artifact Registry: Docker images for the Dataflow Flex Template launcher ---
 resource "google_artifact_registry_repository" "telemetry_images" {
   location      = var.region
