@@ -65,6 +65,17 @@ resource "google_project_iam_member" "compute_default_sa_logging" {
   member  = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
 }
 
+# --- Dataflow worker: read access to the Flex Template launcher image ---
+# The launcher VM runs as sa-dataflow-worker and needs to pull the built
+# container image from Artifact Registry to start at all — without this the
+# launcher VM boots but every docker pull attempt is denied and the job dies
+# after ~4 retries with no pipeline code ever executing.
+resource "google_project_iam_member" "df_artifact_registry_reader" {
+  project = var.project_id
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${google_service_account.dataflow_worker_sa.email}"
+}
+
 # --- Artifact Registry: Docker images for the Dataflow Flex Template launcher ---
 resource "google_artifact_registry_repository" "telemetry_images" {
   location      = var.region
