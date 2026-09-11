@@ -1,4 +1,4 @@
-name: Telemetry Streaming Pipeline
+name: CI/CD Pipeline - Telemetry Streaming Pipeline
 
 on:
   push:
@@ -165,6 +165,7 @@ jobs:
           fi
 
           gcloud dataflow flex-template run "$JOB_NAME" $UPDATE_FLAG \
+            --disable-public-ips \
             --template-file-gcs-location="gs://${{ env.STAGING_BUCKET }}/templates/telemetry_pipeline.json" \
             --region=${{ vars.GCP_REGION }} \
             --subnetwork="https://www.googleapis.com/compute/v1/projects/${{ vars.GCP_PROJECT_ID }}/regions/${{ vars.GCP_REGION }}/subnetworks/telemetry-subnet" \
