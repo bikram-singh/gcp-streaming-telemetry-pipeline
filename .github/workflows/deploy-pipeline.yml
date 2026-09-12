@@ -28,9 +28,33 @@ jobs:
       - name: Terraform Validate
         run: terraform -chdir=terraform/envs/lab validate
 
+  run-tests:
+    name: Unit Tests (Dataflow pipeline + Cloud Function)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install and run Dataflow pipeline tests
+        working-directory: dataflow
+        run: |
+          pip install --no-cache-dir -r requirements.txt
+          python -m pytest test_pipeline.py -v
+
+      - name: Install and run Cloud Function tests
+        working-directory: cloud-function/gemini-diagnostics
+        run: |
+          pip install --no-cache-dir -r requirements.txt pytest
+          python -m pytest test_main.py -v
+
   deploy-infrastructure:
     name: Terraform Apply
-    needs: validate-terraform
+    needs: [validate-terraform, run-tests]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
