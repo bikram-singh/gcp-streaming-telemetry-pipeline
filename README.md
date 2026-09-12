@@ -15,6 +15,57 @@ shortages, and more).
 
 **Live dashboard:** [Looker Studio — Machine Telemetry & AI Incident Monitoring](https://datastudio.google.com/embed/reporting/a6052335-bf85-4d05-a74e-df423a67dd15/page/xgk8F)
 
+## Architecture
+
+```
+                              [ SIMULATED FACTORY TELEMETRY ]
+                                          │
+                         (JSON: machine_id, temperature, vibration, timestamp)
+                                          │
+                                          ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│  INGESTION LAYER            (VPC: telemetry-vpc  /  Subnet: telemetry-subnet)              │
+│                                   ┌──────────────────────────┐                             │
+│                                   │        Pub/Sub           │                             │
+│                                   │   telemetry-input-topic  │                             │
+│                                   └────────────┬─────────────┘                             │
+└────────────────────────────────────────────────┼───────────────────────────────────────────┘
+                                                  │
+                                                  ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│  STREAM PROCESSING LAYER      (Private workers, no public IP  /  Cloud NAT egress)         │
+│                          ┌────────────────────────────────────┐                            │
+│                          │      Dataflow Flex Template         │                            │
+│                          │   (Apache Beam, sa-dataflow-worker) │                            │
+│                          │  1-min tumbling window · avg_temp,  │                            │
+│                          │  avg_vibration per machine_id       │                            │
+│                          └──────────┬──────────────────┬───────┘                            │
+└─────────────────────────────────────┼──────────────────┼─────────────────────────────────────┘
+                    (Windowed Averages)│                  │ (Malformed Payload)
+                                       ▼                  ▼
+┌────────────────────────────────────────┐   ┌───────────────────────────────────────────┐
+│  ANALYTICS & STORAGE LAYER              │   │  DEAD-LETTER QUEUE                        │
+│  BigQuery: telemetry_analytics          │   │  Pub/Sub: telemetry-dlq-topic              │
+│   └─ telemetry_aggregates               │   │  (Cloud Monitoring alert on backlog)       │
+│      (clustered on machine_id)          │   └───────────────────────────────────────────┘
+└────────────────────┬─────────────────────┘
+                      │
+        (avg_temperature > 80.0°C  OR  avg_vibration > 5.0 mm/s)
+                      ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│  AI & INCIDENT RESPONSE LAYER                                                              │
+│  ┌────────────────────┐   ┌───────────────────────┐   ┌──────────────────────────────┐    │
+│  │     Pub/Sub          │──►│   Cloud Function       │──►│      Gemini 2.5 Flash        │    │
+│  │ telemetry-alerts-    │   │  gemini-diagnostics     │   │   (google-genai SDK,          │    │
+│  │      topic           │   │  (gen2, Eventarc,       │   │    Vertex AI backend)         │    │
+│  │                       │   │   sa-gemini-function)   │   │  Root-cause diagnostic brief  │    │
+│  └────────────────────┘   └───────────────────────┘   └──────────────┬───────────────┘    │
+│                                                                        │                     │
+│                                                                        ▼                     │
+│                                              BigQuery: telemetry_analytics.incident_log      │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
 ## Repo Structure
 
 ```
