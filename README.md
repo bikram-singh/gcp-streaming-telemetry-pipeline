@@ -27,6 +27,12 @@ infrastructure — not a static demo.*
 
 ---
 
+## 🔗 Quick Links
+
+📄 [**HLD**](docs/HLD.md) &nbsp;·&nbsp; 📄 [**LLD**](docs/LLD.md) &nbsp;·&nbsp; 📈 [**Live Dashboard**](https://datastudio.google.com/embed/reporting/a6052335-bf85-4d05-a74e-df423a67dd15/page/xgk8F)
+
+---
+
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
