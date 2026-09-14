@@ -46,6 +46,7 @@ infrastructure — not a static demo.*
 - [Live Verification — Real Incidents, Real Diagnostics](#-live-verification--real-incidents-real-diagnostics)
 - [Real Deployment Gotchas (Found & Fixed)](#-real-deployment-gotchas-found--fixed)
 - [Dashboard](#-dashboard)
+- [Snapshots](#-snapshots)
 - [Repository](#-repository)
 
 ---
@@ -95,7 +96,6 @@ diagnostic sentence — before a human looks at it.
 
 ![Architecture diagram](docs/screenshots/architecture-diagram.png)
 
-
 ```
                               [ SIMULATED FACTORY TELEMETRY ]
                                           │
@@ -130,19 +130,17 @@ diagnostic sentence — before a human looks at it.
         (avg_temperature > 80.0°C  OR  avg_vibration > 5.0 mm/s)
                       ▼
 ┌───────────────────────────────────────────────────────────────────────────────────────────┐
-│  🧠 AI & INCIDENT RESPONSE LAYER                                                          │
+│  🧠 AI & INCIDENT RESPONSE LAYER                                                           │
 │  ┌────────────────────┐   ┌───────────────────────┐   ┌──────────────────────────────┐    │
-│  │     Pub/Sub          │──►│   Cloud Function       │──►│      Gemini 2.5 Flash          │    
-│  │ telemetry-alerts-    │   │  gemini-diagnostics     │   │   (google-genai SDK,          │    
-│  │      topic           │   │  (gen2, Eventarc)       │   │    Vertex AI backend)         │    
+│  │     Pub/Sub          │──►│   Cloud Function       │──►│      Gemini 2.5 Flash        │    │
+│  │ telemetry-alerts-    │   │  gemini-diagnostics     │   │   (google-genai SDK,          │    │
+│  │      topic           │   │  (gen2, Eventarc)       │   │    Vertex AI backend)         │    │
 │  └────────────────────┘   └───────────────────────┘   └──────────────┬───────────────┘    │
-│                                                                        ▼                  │
-│                                              BigQuery: telemetry_analytics.incident_log   │
+│                                                                        │                     │
+│                                                                        ▼                     │
+│                                              BigQuery: telemetry_analytics.incident_log      │
 └───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
-
-![BigQuery Console query results](docs/screenshots/bigquery-console-query-results.png)
-
 
 ### 🔄 Layer Breakdown
 
@@ -183,7 +181,8 @@ gcp-streaming-telemetry-pipeline/
 ├── 📄 README.md
 ├── 📁 docs/
 │   ├── 📄 HLD.md
-│   └── 📄 LLD.md
+│   ├── 📄 LLD.md
+│   └── 📁 screenshots/
 │
 ├── 📁 terraform/
 │   ├── 📁 envs/lab/
@@ -297,6 +296,9 @@ green CI checkmark:
 > imbalance, misalignment, or bearing degradation. Immediately initiate
 > a physical inspection..."*
 
+See screenshots of this verification in the [Snapshots](#-snapshots)
+section below.
+
 ---
 
 ## 🔧 Real Deployment Gotchas (Found & Fixed)
@@ -337,8 +339,6 @@ Real screenshots from an actual build and deploy of this pipeline — prompt
 to Terraform apply, live pipeline verification, and the dashboard setup
 walkthrough. Nothing simulated.
 
----
-
 ### 🔁 CI/CD — GitHub Actions, full green run
 
 ![GitHub Actions success](docs/screenshots/cicd-01-github-actions-success.png)
@@ -348,9 +348,10 @@ walkthrough. Nothing simulated.
 ### 🔍 Live Pipeline Verification
 
 Simulator sending real telemetry, the Dataflow job confirmed `Running`,
-and a direct BigQuery query returning genuine aggregated rows and
-incidents — including a background 10-minute run that produced real
-breaches without any forced/synthetic test data.
+and direct BigQuery queries — both a local Python query and the BigQuery
+Console itself — returning genuine aggregated rows and incidents,
+including a background 10-minute run that produced real breaches
+without any forced/synthetic test data.
 
 ![Simulator running](docs/screenshots/verify-01-simulator-running.png)
 ![Dataflow job active](docs/screenshots/verify-02-dataflow-job-active.png)
@@ -358,7 +359,7 @@ breaches without any forced/synthetic test data.
 ![BigQuery query result](docs/screenshots/verify-04-bigquery-query-result.png)
 ![Latest readings table](docs/screenshots/verify-05-latest-readings-table.png)
 ![Background run — aggregates and incidents](docs/screenshots/verify-06-background-run-aggregates-incidents.png)
-
+![BigQuery Console query results](docs/screenshots/bigquery-console-query-results.png)
 
 ---
 
