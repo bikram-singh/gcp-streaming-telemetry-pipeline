@@ -130,14 +130,14 @@ diagnostic sentence — before a human looks at it.
         (avg_temperature > 80.0°C  OR  avg_vibration > 5.0 mm/s)
                       ▼
 ┌───────────────────────────────────────────────────────────────────────────────────────────┐
-│  🧠 AI & INCIDENT RESPONSE LAYER                                                           │
+│  🧠 AI & INCIDENT RESPONSE LAYER                                                          │
 │  ┌────────────────────┐   ┌───────────────────────┐   ┌──────────────────────────────┐    │
-│  │     Pub/Sub          │──►│   Cloud Function       │──►│      Gemini 2.5 Flash        │    │
-│  │ telemetry-alerts-    │   │  gemini-diagnostics     │   │   (google-genai SDK,          │    │
-│  │      topic           │   │  (gen2, Eventarc)       │   │    Vertex AI backend)         │    │
+│  │     Pub/Sub          │──►│   Cloud Function       │──►│      Gemini 2.5 Flash          │    
+│  │ telemetry-alerts-    │   │  gemini-diagnostics     │   │   (google-genai SDK,          │    
+│  │      topic           │   │  (gen2, Eventarc)       │   │    Vertex AI backend)         │    
 │  └────────────────────┘   └───────────────────────┘   └──────────────┬───────────────┘    │
-│                                                                        ▼                     │
-│                                              BigQuery: telemetry_analytics.incident_log      │
+│                                                                        ▼                  │
+│                                              BigQuery: telemetry_analytics.incident_log   │
 └───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -355,8 +355,9 @@ breaches without any forced/synthetic test data.
 ![Simulator running](docs/screenshots/verify-01-simulator-running.png)
 ![Dataflow job active](docs/screenshots/verify-02-dataflow-job-active.png)
 ![BigQuery Python query](docs/screenshots/verify-03-bigquery-python-query.png)
-![Latest readings table](docs/screenshots/verify-04-latest-readings-table.png)
-![Background run — aggregates and incidents](docs/screenshots/verify-05-background-run-aggregates-incidents.png)
+![BigQuery query result](docs/screenshots/verify-04-bigquery-query-result.png)
+![Latest readings table](docs/screenshots/verify-05-latest-readings-table.png)
+![Background run — aggregates and incidents](docs/screenshots/verify-06-background-run-aggregates-incidents.png)
 
 
 ---
