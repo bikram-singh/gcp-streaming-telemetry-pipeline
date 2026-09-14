@@ -325,6 +325,62 @@ Full detail on each, including exact commands, in `docs/LLD.md`.
 
 ---
 
+## 📸 Snapshots
+
+Real screenshots from an actual build and deploy of this pipeline — prompt
+to Terraform apply, live pipeline verification, and the dashboard setup
+walkthrough. Nothing simulated.
+
+### 🏛️ Architecture
+
+![Architecture diagram](docs/screenshots/architecture-diagram.png)
+
+---
+
+### 🔁 CI/CD — GitHub Actions, full green run
+
+![GitHub Actions success](docs/screenshots/cicd-01-github-actions-success.png)
+
+---
+
+### 🔍 Live Pipeline Verification
+
+Simulator sending real telemetry, the Dataflow job confirmed `Running`,
+and a direct BigQuery query returning genuine aggregated rows and
+incidents — including a background 10-minute run that produced real
+breaches without any forced/synthetic test data.
+
+![Simulator running](docs/screenshots/verify-01-simulator-running.png)
+![Dataflow job active](docs/screenshots/verify-02-dataflow-job-active.png)
+![BigQuery Python query](docs/screenshots/verify-03-bigquery-python-query.png)
+![Latest readings table](docs/screenshots/verify-04-latest-readings-table.png)
+![Background run — aggregates and incidents](docs/screenshots/verify-05-background-run-aggregates-incidents.png)
+![BigQuery Console query results](docs/screenshots/bigquery-console-query-results.png)
+
+---
+
+### 📈 Looker Studio Dashboard — Build Walkthrough
+
+1️⃣ Create report → 2️⃣ Connect BigQuery → 3️⃣ Authorize → 4️⃣ Select dataset/table
+
+![Create report](docs/screenshots/looker-01-create-report.png)
+![Connect BigQuery](docs/screenshots/looker-02-connect-bigquery.png)
+![Authorize BigQuery](docs/screenshots/looker-03-authorize-bigquery.png)
+![Select dataset and table](docs/screenshots/looker-04-select-dataset-table.png)
+
+5️⃣ Blank canvas → 6️⃣ Time series chart config → 7️⃣ Add incident_log source
+
+![Blank canvas](docs/screenshots/looker-05-blank-canvas.png)
+![Time series chart config](docs/screenshots/looker-06-time-series-config.png)
+![Add incident_log data source](docs/screenshots/looker-07-incident-log-source.png)
+
+8️⃣ Finished report, edit view → 9️⃣ Live public view
+
+![Dashboard edit view](docs/screenshots/looker-08-dashboard-edit-view.png)
+![Dashboard live view](docs/screenshots/looker-09-dashboard-live-view.png)
+
+---
+
 ## 🔗 Repository
 
 | Repository | Purpose |
