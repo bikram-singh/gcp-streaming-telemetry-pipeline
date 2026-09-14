@@ -93,6 +93,9 @@ diagnostic sentence — before a human looks at it.
 
 ## 🏛️ Architecture
 
+![Architecture diagram](docs/screenshots/architecture-diagram.png)
+
+
 ```
                               [ SIMULATED FACTORY TELEMETRY ]
                                           │
@@ -137,6 +140,9 @@ diagnostic sentence — before a human looks at it.
 │                                              BigQuery: telemetry_analytics.incident_log      │
 └───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+![BigQuery Console query results](docs/screenshots/bigquery-console-query-results.png)
+
 
 ### 🔄 Layer Breakdown
 
@@ -331,10 +337,6 @@ Real screenshots from an actual build and deploy of this pipeline — prompt
 to Terraform apply, live pipeline verification, and the dashboard setup
 walkthrough. Nothing simulated.
 
-### 🏛️ Architecture
-
-![Architecture diagram](docs/screenshots/architecture-diagram.png)
-
 ---
 
 ### 🔁 CI/CD — GitHub Actions, full green run
@@ -355,7 +357,7 @@ breaches without any forced/synthetic test data.
 ![BigQuery Python query](docs/screenshots/verify-03-bigquery-python-query.png)
 ![Latest readings table](docs/screenshots/verify-04-latest-readings-table.png)
 ![Background run — aggregates and incidents](docs/screenshots/verify-05-background-run-aggregates-incidents.png)
-![BigQuery Console query results](docs/screenshots/bigquery-console-query-results.png)
+
 
 ---
 
